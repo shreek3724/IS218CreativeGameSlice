@@ -3,12 +3,12 @@
 import os
 from pathlib import Path
 
-from flask import Flask, render_template
-from flask_login import LoginManager, login_required
+from flask import Flask, abort, render_template
+from flask_login import LoginManager, current_user, login_required
 from flask_wtf.csrf import CSRFProtect
 
 from app.auth import auth_bp, load_user
-from app.db import init_app_database
+from app.db import get_db, init_app_database
 from app.forms import LogoutForm
 
 csrf = CSRFProtect()
@@ -34,9 +34,13 @@ def create_app(test_config=None):
     login_manager.init_app(app)
     app.register_blueprint(auth_bp)
 
+    @app.context_processor
+    def inject_logout_form():
+        return {"logout_form": LogoutForm()}
+
     @app.get("/")
     def home():
-        return render_template("home.html", logout_form=LogoutForm())
+        return render_template("home.html")
 
     @app.get("/play")
     @login_required
@@ -46,6 +50,13 @@ def create_app(test_config=None):
     @app.get("/results/<int:match_id>")
     @login_required
     def results(match_id):
-        return render_template("play.html")
+        match = get_db().execute(
+            "SELECT match_id FROM restoration_matches "
+            "WHERE match_id = ? AND user_id = ?",
+            (match_id, current_user.user_id),
+        ).fetchone()
+        if not match:
+            abort(404)
+        return render_template("results.html", match=match)
 
     return app
