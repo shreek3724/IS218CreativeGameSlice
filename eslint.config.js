@@ -6,7 +6,9 @@ export default [
     files: ["app/static/**/*.js"],
     languageOptions: {
       globals: {
-        document: "readonly"
+        document: "readonly",
+        fetch: "readonly",
+        window: "readonly"
       }
     },
     rules: {

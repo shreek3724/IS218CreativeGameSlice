@@ -10,6 +10,7 @@ from flask_wtf.csrf import CSRFProtect
 from app.auth import auth_bp, load_user
 from app.db import get_db, init_app_database
 from app.forms import LogoutForm
+from app.restorations import restorations_bp
 
 csrf = CSRFProtect()
 login_manager = LoginManager()
@@ -33,6 +34,7 @@ def create_app(test_config=None):
     csrf.init_app(app)
     login_manager.init_app(app)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(restorations_bp)
 
     @app.context_processor
     def inject_logout_form():
@@ -51,7 +53,9 @@ def create_app(test_config=None):
     @login_required
     def results(match_id):
         match = get_db().execute(
-            "SELECT match_id FROM restoration_matches "
+            "SELECT match_id, artwork_id, final_integrity_score, clue_accuracy, "
+            "final_score, layers_restored_count, restored_image_data "
+            "FROM restoration_matches "
             "WHERE match_id = ? AND user_id = ?",
             (match_id, current_user.user_id),
         ).fetchone()

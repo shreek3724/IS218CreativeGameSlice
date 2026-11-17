@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS restoration_matches (
     layers_restored_count INTEGER NOT NULL,
     time_seconds INTEGER NOT NULL,
     restored_image_data TEXT NOT NULL,
+    submission_fingerprint TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES user_accounts (user_id)
 );
@@ -61,4 +62,18 @@ def init_app_database(app):
     app.teardown_appcontext(close_db)
     with app.app_context():
         get_db().executescript(SCHEMA)
+        columns = {
+            row["name"]
+            for row in get_db().execute("PRAGMA table_info(restoration_matches)")
+        }
+        if "submission_fingerprint" not in columns:
+            get_db().execute(
+                "ALTER TABLE restoration_matches "
+                "ADD COLUMN submission_fingerprint TEXT"
+            )
+        get_db().execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS "
+            "restoration_matches_user_fingerprint ON restoration_matches "
+            "(user_id, submission_fingerprint)"
+        )
         get_db().commit()

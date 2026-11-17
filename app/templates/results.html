@@ -6,14 +6,13 @@
     <h1 id="results-title">Restoration complete</h1>
     <p class="subtitle">A fresh start for a timeless landscape.</p>
     <div class="results-grid">
-      <article class="result-art panel"><canvas class="result-canvas" width="440" height="510" aria-label="Restored Golden Valley landscape"></canvas><h2>Golden Valley</h2><p>Your restored painting</p></article>
-      <article class="score-card panel"><h2>Final Score</h2><div class="score-summary"><strong>84%</strong><div><h3>A careful restoration</h3><p>A little patience. A lot of discovery.</p></div></div><hr>
-        <div class="score-row"><h3>Canvas Integrity</h3><strong>80%</strong></div><p>60% of final score · 48 / 60 points</p><div class="meter sage"><span style="width: 80%"></span></div>
-        <div class="score-row"><h3>Clue Deduction Accuracy</h3><strong>90%</strong></div><p>40% of final score · 36 / 40 points</p><div class="meter lilac"><span style="width: 90%"></span></div>
+      <article class="result-art panel"><img class="result-image" src="{{ match['restored_image_data'] }}" alt="Saved restoration of {{ match['artwork_id'] }}"><h2>{{ match['artwork_id'].replace('-', ' ').title() }}</h2><p>Your saved restoration</p></article>
+      <article class="score-card panel"><h2>Final Score</h2><div class="score-summary"><strong>{{ match['final_score']|round|int }}%</strong><div><h3>A careful restoration</h3><p>Server-verified move sequence.</p></div></div><hr>
+        <div class="score-row"><h3>Canvas Integrity</h3><strong>{{ match['final_integrity_score']|round|int }}%</strong></div><p>60% of final score</p><div class="meter sage"><span style="width: {{ match['final_integrity_score'] }}%"></span></div>
+        <div class="score-row"><h3>Clue Deduction Accuracy</h3><strong>{{ match['clue_accuracy']|round|int }}%</strong></div><p>40% of final score · {{ match['layers_restored_count'] }} / 3 layers restored</p><div class="meter lilac"><span style="width: {{ match['clue_accuracy'] }}%"></span></div>
         <p class="formula">Canvas Integrity (60%) + Clue Deduction Accuracy (40%)</p>
         <div class="result-actions"><a class="button button-lilac" href="{{ url_for('play') }}">Restore Another Painting</a></div>
       </article>
     </div>
   </section>
-  <script type="module" src="{{ url_for('static', filename='restoration.js') }}"></script>
 {% endblock %}

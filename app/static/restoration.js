@@ -4,8 +4,14 @@ class RestorationUI {
     this.context = this.canvas.getContext("2d");
     this.selectedCell = 0;
     this.selectedTool = null;
-    this.currentLayer = 2;
+    this.layers = [
+      { value: 2, name: "Surface Dirt", guidance: "Queue Surface Dirt moves, then select Next Layer when you are ready." },
+      { value: 1, name: "Overpaint", guidance: "Queue Overpaint moves, then select Next Layer when you are ready." },
+      { value: 0, name: "Aged Varnish", guidance: "Queue Aged Varnish moves, then save your restoration for server verification." }
+    ];
+    this.layerIndex = 0;
     this.moveLog = [];
+    this.startedAt = Date.now();
     this.bindControls();
     this.draw();
   }
@@ -20,6 +26,8 @@ class RestorationUI {
       input.addEventListener("input", () => this.updateMix());
     });
     document.querySelector("#apply-solvent").addEventListener("click", () => this.apply());
+    document.querySelector("#next-layer").addEventListener("click", () => this.nextLayer());
+    document.querySelector("#save-restoration").addEventListener("click", () => this.save());
     document.querySelector("#export-png").addEventListener("click", () => this.exportPng());
   }
 
@@ -85,6 +93,61 @@ class RestorationUI {
     this.announce(
       `Move ${this.moveLog.length} queued locally for server verification in Step 5.`
     );
+  }
+
+  get currentLayer() {
+    return this.layers[this.layerIndex].value;
+  }
+
+  nextLayer() {
+    if (this.layerIndex === this.layers.length - 1) {
+      this.announce("Aged Varnish is the final layer. Save when your moves are ready for verification.");
+      return;
+    }
+    this.layerIndex += 1;
+    const layer = this.layers[this.layerIndex];
+    document.querySelector("#current-layer").textContent = layer.name;
+    document.querySelector("#layer-guidance").textContent = layer.guidance;
+    if (this.layerIndex === this.layers.length - 1) {
+      document.querySelector("#next-layer").disabled = true;
+    }
+    this.announce(`${layer.name} is now selected for newly queued moves.`);
+  }
+
+  async save() {
+    if (!this.moveLog.length) {
+      this.announce("Queue at least one move before saving.");
+      return;
+    }
+    const button = document.querySelector("#save-restoration");
+    button.disabled = true;
+    this.announce("Verifying restoration on the server.");
+    try {
+      const response = await fetch("/api/restorations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": document.querySelector("meta[name=csrf-token]").content
+        },
+        body: JSON.stringify({
+          artwork_id: "golden-valley",
+          mode: "casual",
+          time_seconds: Math.round((Date.now() - this.startedAt) / 1000),
+          moves: this.moveLog,
+          restored_image_data: this.canvas.toDataURL("image/png")
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        const completed = result.layers_restored_count;
+        const progress = Number.isInteger(completed) ? ` (${completed} / 3 confirmed)` : "";
+        throw new Error(`${result.error || "Unable to save restoration."}${progress}`);
+      }
+      window.location.assign(result.result_url);
+    } catch (error) {
+      button.disabled = false;
+      this.announce(error.message);
+    }
   }
 
   exportPng() {
