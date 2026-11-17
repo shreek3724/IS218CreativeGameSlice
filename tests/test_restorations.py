@@ -103,6 +103,35 @@ def test_csrf_protects_restoration_save(app):
     assert client.post("/api/restorations", json=payload()).status_code == 400
 
 
+def test_preview_is_csrf_protected_and_never_persists(app):
+    client = app.test_client()
+    login_client(app, client, "preview")
+    unprotected = client.post(
+        "/api/restorations/preview", json={"moves": valid_moves()[:1]}
+    )
+    assert unprotected.status_code == 400
+    headers = {"X-CSRFToken": csrf_token(client)}
+    valid = client.post(
+        "/api/restorations/preview", json={"moves": valid_moves()[:1]}, headers=headers
+    )
+    assert valid.status_code == 200
+    assert valid.json["last_move"]["valid"] is True
+    assert valid.json["integrity"] == 100.0
+    assert valid.json["cells"][5]["cleared_layers"] == [SURFACE_DIRT]
+
+    invalid_move = {**valid_moves()[0], "tool": "brush"}
+    invalid = client.post(
+        "/api/restorations/preview", json={"moves": [invalid_move]}, headers=headers
+    )
+    assert invalid.json["last_move"]["valid"] is False
+    assert invalid.json["integrity"] == 90.0
+    with app.app_context():
+        count = get_db().execute(
+            "SELECT COUNT(*) FROM restoration_matches"
+        ).fetchone()[0]
+        assert count == 0
+
+
 def test_incomplete_restoration_is_not_saved(app):
     client = app.test_client()
     login_client(app, client, "partial")

@@ -9,7 +9,14 @@ from flask import Blueprint, jsonify, request, url_for
 from flask_login import current_user, login_required
 
 from app.db import get_db
-from app.rules import AGED_VARNISH, OVERPAINT, SURFACE_DIRT, PaintingGrid
+from app.rules import (
+    AGED_VARNISH,
+    OVERPAINT,
+    SURFACE_DIRT,
+    CellState,
+    MoveEvaluation,
+    PaintingGrid,
+)
 
 restorations_bp = Blueprint("restorations", __name__)
 VALID_LAYERS = {SURFACE_DIRT, OVERPAINT, AGED_VARNISH}
@@ -24,6 +31,8 @@ class VerifiedRestoration:
     clue_accuracy: float
     final_score: float
     layers_restored_count: int
+    cleared_cells: tuple[CellState, ...]
+    last_move: MoveEvaluation
 
 
 def _invalid(message):
@@ -57,16 +66,53 @@ def replay_moves(moves):
     if not isinstance(moves, list) or not moves:
         raise _invalid("At least one move is required.")
     grid = PaintingGrid()
+    evaluation = None
     for move in moves:
         layer, coordinate, mixture, tool = _read_move(move)
-        grid.apply_move(layer, coordinate, mixture, tool)
+        evaluation = grid.apply_move(layer, coordinate, mixture, tool)
     completed = sum(grid.layer_complete(layer) for layer in VALID_LAYERS)
     return VerifiedRestoration(
         integrity=grid.integrity,
         clue_accuracy=grid.clue_accuracy,
         final_score=grid.final_score,
         layers_restored_count=completed,
+        cleared_cells=grid.cell_states,
+        last_move=evaluation,
     )
+
+
+def _preview_json(verified):
+    return {
+        "integrity": verified.integrity,
+        "clue_accuracy": verified.clue_accuracy,
+        "layers_restored_count": verified.layers_restored_count,
+        "last_move": {
+            "valid": verified.last_move.valid,
+            "reason": verified.last_move.reason,
+        },
+        "cells": [
+            {
+                "x": cell.column,
+                "y": cell.row,
+                "cleared_layers": sorted(cell.cleared_layers),
+            }
+            for cell in verified.cleared_cells
+        ],
+    }
+
+
+@restorations_bp.post("/api/restorations/preview")
+@login_required
+def preview_restoration():
+    """Replay moves without persistence for live, server-verified feedback."""
+    try:
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            raise _invalid("A JSON object is required.")
+        verified = replay_moves(payload.get("moves"))
+    except ValueError as error:
+        return jsonify(error=str(error)), 400
+    return jsonify(_preview_json(verified))
 
 
 def _fingerprint(payload):

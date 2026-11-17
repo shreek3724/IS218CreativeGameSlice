@@ -11,6 +11,7 @@ class RestorationUI {
     ];
     this.layerIndex = 0;
     this.moveLog = [];
+    this.preview = { integrity: 100, layers_restored_count: 0, cells: [] };
     this.startedAt = Date.now();
     this.bindControls();
     this.draw();
@@ -74,7 +75,7 @@ class RestorationUI {
     });
   }
 
-  apply() {
+  async apply() {
     if (!this.selectedTool) {
       this.announce("Choose a tool before applying solvent.");
       return;
@@ -83,16 +84,35 @@ class RestorationUI {
       values[`${name}_ratio`] = Number(document.querySelector(`#${name}`).value);
       return values;
     }, {});
-    this.moveLog.push({
+    const move = {
       x: this.selectedCell % 4,
       y: Math.floor(this.selectedCell / 4),
       layer: this.currentLayer,
       solvent_mixture: mixture,
       tool: this.selectedTool
-    });
-    this.announce(
-      `Move ${this.moveLog.length} queued locally for server verification in Step 5.`
-    );
+    };
+    this.moveLog.push(move);
+    try {
+      const response = await fetch("/api/restorations/preview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": document.querySelector("meta[name=csrf-token]").content
+        },
+        body: JSON.stringify({ moves: this.moveLog })
+      });
+      const preview = await response.json();
+      if (!response.ok) throw new Error(preview.error || "Unable to verify move.");
+      this.preview = preview;
+      this.updatePreview();
+      const feedback = preview.last_move.valid
+        ? "Move verified."
+        : `Move invalid: ${preview.last_move.reason}.`;
+      this.announce(`${feedback} Integrity: ${preview.integrity}%.`);
+    } catch (error) {
+      this.moveLog.pop();
+      this.announce(error.message);
+    }
   }
 
   get currentLayer() {
@@ -104,6 +124,10 @@ class RestorationUI {
       this.announce("Aged Varnish is the final layer. Save when your moves are ready for verification.");
       return;
     }
+    if (this.preview.layers_restored_count <= this.layerIndex) {
+      this.announce("Complete the current layer with server-verified moves first.");
+      return;
+    }
     this.layerIndex += 1;
     const layer = this.layers[this.layerIndex];
     document.querySelector("#current-layer").textContent = layer.name;
@@ -112,6 +136,17 @@ class RestorationUI {
       document.querySelector("#next-layer").disabled = true;
     }
     this.announce(`${layer.name} is now selected for newly queued moves.`);
+  }
+
+  updatePreview() {
+    document.querySelector("#integrity-value").textContent = `${this.preview.integrity}%`;
+    document.querySelector("#integrity-meter").style.width = `${this.preview.integrity}%`;
+    document.querySelector(".meter[role=progressbar]").setAttribute("aria-valuenow", this.preview.integrity);
+    document.querySelector("#layer-count").textContent = `${this.preview.layers_restored_count} / 3`;
+    document.querySelectorAll(".layer-steps li").forEach((item, index) => {
+      item.classList.toggle("done", index < this.preview.layers_restored_count);
+    });
+    this.draw();
   }
 
   async save() {
@@ -188,12 +223,21 @@ class RestorationUI {
       ctx.fillRect(x, 370 - (index % 3) * 25, 9, 90 + (index % 2) * 18);
       ctx.beginPath(); ctx.ellipse(x + 4, 350 - (index % 3) * 25, 24, 50, 0, 0, Math.PI * 2); ctx.fill();
     }
-    ctx.fillStyle = "rgba(116, 91, 52, .45)";
-    for (let index = 0; index < 8; index += 1) {
-      ctx.beginPath(); ctx.arc(105 + (index * 59) % 420, 130 + (index * 91) % 410, 42, 0, Math.PI * 2); ctx.fill();
-    }
+    const cleared = new Map(this.preview.cells.map((cell) => [`${cell.x},${cell.y}`, cell.cleared_layers]));
     const cellWidth = (width - 130) / 4;
     const cellHeight = (height - 116) / 4;
+    ctx.fillStyle = "rgba(116, 91, 52, .45)";
+    for (const [row, column] of [[1, 1], [1, 2], [2, 1], [2, 2]]) {
+      if (!cleared.get(`${column},${row}`)?.includes(2)) {
+        ctx.beginPath();
+        ctx.arc(65 + (column + .5) * cellWidth, 58 + (row + .5) * cellHeight, 42, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    if (this.preview.layers_restored_count < 3) {
+      ctx.fillStyle = "rgba(197, 157, 70, .08)";
+      ctx.fillRect(65, 58, width - 130, height - 116);
+    }
     const row = Math.floor(this.selectedCell / 4);
     const column = this.selectedCell % 4;
     ctx.strokeStyle = "#b687f0";

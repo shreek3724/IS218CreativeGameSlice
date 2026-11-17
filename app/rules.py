@@ -181,6 +181,11 @@ class PaintingGrid:
         )
 
     @property
+    def cell_states(self) -> tuple[CellState, ...]:
+        """Return immutable cell state for a presentation adapter."""
+        return tuple(self._cells.values())
+
+    @property
     def clue_accuracy(self) -> float:
         """Return correct clue choices as a percentage."""
         if not self._attempts:
