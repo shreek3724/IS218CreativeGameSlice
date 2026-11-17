@@ -1,2 +1,54 @@
 {% extends "base.html" %}
-{% block content %}<h1>Restoration</h1>{% endblock %}
+{% block title %}Restoration | Art Conservator{% endblock %}
+{% block content %}
+  <section class="play-page" aria-labelledby="restoration-title">
+    <h1 id="restoration-title" class="visually-hidden">Untimed restoration</h1>
+    <div class="canvas-card">
+      <canvas id="painting-canvas" width="600" height="720" tabindex="0" role="application"
+        aria-label="Golden Valley restoration canvas. Use arrow keys to select a cell and Enter to inspect it."
+        aria-describedby="canvas-help"></canvas>
+      <p id="canvas-help" class="help-text">Use arrow keys to select one of sixteen canvas cells. Press Enter or Space to inspect the selected area.</p>
+      <h2>Painting Integrity: <span id="integrity-value">100%</span></h2>
+      <div class="meter" role="progressbar" aria-label="Painting integrity" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+        <span id="integrity-meter" style="width: 100%"></span>
+      </div>
+      <button class="button button-lilac export-button" type="button" id="export-png">Download PNG</button>
+    </div>
+
+    <div class="restoration-controls">
+      <section class="panel progress-panel" aria-labelledby="progress-title">
+        <div><h2 id="progress-title">Layers completed</h2><strong id="layer-count">0 / 3</strong></div>
+        <ol class="layer-steps" aria-label="Restoration layers">
+          <li class="active">1<br><span>Surface dirt</span></li><li>2<br><span>Overpaint</span></li><li>3<br><span>Aged varnish</span></li>
+        </ol>
+      </section>
+
+      <section class="panel kit-panel" aria-labelledby="kit-title">
+        <div><h2 id="kit-title">Restoration kit</h2><div class="ingredient-row"><span>💧<b>Water</b></span><span>🧪<b>Oil</b></span><span>⚗️<b>Acid</b></span></div></div>
+        <fieldset><legend>Tools</legend><div class="tool-row">
+          <button type="button" data-tool="swab" aria-pressed="false">🖌️<span>Swab</span></button>
+          <button type="button" data-tool="brush" aria-pressed="false">🖍️<span>Brush</span></button>
+          <button type="button" data-tool="heat-lamp" aria-pressed="false">💡<span>Heat lamp</span></button>
+        </div></fieldset>
+      </section>
+
+      <section class="panel mix-panel" aria-labelledby="mix-title">
+        <div class="mixing"><h2 id="mix-title">Mix Solvent</h2>
+          <label>Water <output id="water-output">70%</output><input id="water" type="range" min="0" max="100" value="70"></label>
+          <label>Oil <output id="oil-output">30%</output><input id="oil" type="range" min="0" max="100" value="30"></label>
+          <label>Acid <output id="acid-output">0%</output><input id="acid" type="range" min="0" max="100" value="0"></label>
+        </div>
+        <div class="selected-tool"><p>Chosen tool</p><strong id="selected-tool">Choose a tool</strong></div>
+      </section>
+      <button class="button button-sage apply-button" type="button" id="apply-solvent">Apply Solvent</button>
+
+      <section class="panel notes-panel" aria-labelledby="notes-title">
+        <div><h2 id="notes-title">Past notes</h2><article class="note"><h3>Gentle first</h3><p>Start with water. Use a soft swab to lift loose surface dust.</p></article></div>
+        <div><h2>Current note</h2><article class="note note-lilac"><h3>Potion hint</h3><p id="current-note">Try a 7:3 ratio of water and oil with a swab.</p></article></div>
+      </section>
+      <section class="mode-row" aria-label="Mode selection"><span>Untimed restoration</span><button type="button" disabled title="Coming in Review 3">Timed Mode — Coming in Review 3</button></section>
+      <p id="game-status" class="status-message" role="status" aria-live="polite">Select a canvas cell, mix the solvent, and choose a tool.</p>
+    </div>
+  </section>
+  <script type="module" src="{{ url_for('static', filename='restoration.js') }}"></script>
+{% endblock %}
