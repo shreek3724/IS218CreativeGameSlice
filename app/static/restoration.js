@@ -4,8 +4,8 @@ class RestorationUI {
     this.context = this.canvas.getContext("2d");
     this.selectedCell = 0;
     this.selectedTool = null;
-    this.integrity = 100;
-    this.layersCompleted = 0;
+    this.currentLayer = 2;
+    this.moveLog = [];
     this.bindControls();
     this.draw();
   }
@@ -71,15 +71,20 @@ class RestorationUI {
       this.announce("Choose a tool before applying solvent.");
       return;
     }
-    this.integrity = Math.max(0, this.integrity - 2);
-    this.layersCompleted = Math.min(3, this.layersCompleted + 1);
-    document.querySelector("#integrity-value").textContent = `${this.integrity}%`;
-    document.querySelector("#integrity-meter").style.width = `${this.integrity}%`;
-    document.querySelector(".meter[role=progressbar]").setAttribute("aria-valuenow", this.integrity);
-    document.querySelector("#layer-count").textContent = `${this.layersCompleted} / 3`;
-    document.querySelectorAll(".layer-steps li").forEach((item, index) => item.classList.toggle("done", index < this.layersCompleted));
-    this.announce("Solvent applied in this preview. Server verification and saving arrive in Step 5.");
-    this.draw();
+    const mixture = ["water", "oil", "acid"].reduce((values, name) => {
+      values[`${name}_ratio`] = Number(document.querySelector(`#${name}`).value);
+      return values;
+    }, {});
+    this.moveLog.push({
+      x: this.selectedCell % 4,
+      y: Math.floor(this.selectedCell / 4),
+      layer: this.currentLayer,
+      solvent_mixture: mixture,
+      tool: this.selectedTool
+    });
+    this.announce(
+      `Move ${this.moveLog.length} queued locally for server verification in Step 5.`
+    );
   }
 
   exportPng() {
@@ -121,7 +126,7 @@ class RestorationUI {
       ctx.beginPath(); ctx.ellipse(x + 4, 350 - (index % 3) * 25, 24, 50, 0, 0, Math.PI * 2); ctx.fill();
     }
     ctx.fillStyle = "rgba(116, 91, 52, .45)";
-    for (let index = 0; index < 8 - this.layersCompleted * 2; index += 1) {
+    for (let index = 0; index < 8; index += 1) {
       ctx.beginPath(); ctx.arc(105 + (index * 59) % 420, 130 + (index * 91) % 410, 42, 0, Math.PI * 2); ctx.fill();
     }
     const cellWidth = (width - 130) / 4;
