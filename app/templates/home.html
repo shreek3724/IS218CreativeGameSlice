@@ -1,13 +1,13 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Art Conservator</title>
-  </head>
-  <body>
-    <main>
-      <h1>Art Conservator</h1>
-    </main>
-  </body>
-</html>
+{% extends "base.html" %}
+{% block content %}
+  <h1>Art Conservator</h1>
+  {% if current_user.is_authenticated %}
+    <a href="{{ url_for('play') }}">Start Restoration</a>
+    <form action="{{ url_for('auth.logout') }}" method="post">
+      {{ logout_form.hidden_tag() }}{{ logout_form.submit }}
+    </form>
+  {% else %}
+    <a href="{{ url_for('auth.signup') }}">Create account</a>
+    <a href="{{ url_for('auth.login') }}">Sign in</a>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Sign in | Art Conservator{% endblock %}
+{% block content %}
+  <h1>Sign in</h1>
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {% for field in (form.username, form.password) %}
+      {{ field.label }} {{ field() }}
+      {% for error in field.errors %}<p role="alert">{{ error }}</p>{% endfor %}
+    {% endfor %}
+    {{ form.submit }}
+  </form>
+{% endblock %}
